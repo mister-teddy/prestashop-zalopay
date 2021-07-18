@@ -54,7 +54,10 @@ class ZaloPayValidationModuleFrontController extends ModuleFrontController
 
         $this->context->smarty->assign([
             'params' => $_REQUEST,
+            'cart' => $cart,
         ]);
+
+        $this->createOrder();
 
         //$this->setTemplate('payment_return.tpl');
         $this->setTemplate('module:zalopay/views/templates/front/payment_return.tpl');
@@ -74,5 +77,71 @@ class ZaloPayValidationModuleFrontController extends ModuleFrontController
 
         // $this->module->validateOrder($cart->id, Configuration::get('PS_OS_BANKWIRE'), $total, $this->module->displayName, NULL, $mailVars, (int)$currency->id, false, $customer->secure_key);
         // Tools::redirect('index.php?controller=order-confirmation&id_cart='.$cart->id.'&id_module='.$this->module->id.'&id_order='.$this->module->currentOrder.'&key='.$customer->secure_key);
+    }
+
+    public function createOrder()
+    {
+        $cart = $this->context->cart;
+        $customer = $this->context->customer;
+
+        $appid = "553";
+        $key1 = "9phuAOYhan4urywHTh0ndEXiV3pKHr5Q";
+        $createOrderUrl = "https://sandbox.zalopay.com.vn/v001/tpe/createorder";
+
+        $payload = [
+            "appid" => $appid,
+            "appuser" => $customer->email,
+            "apptime" => time(),
+            "amount" => $cart->getOrderTotal(),
+            "apptransid" => date("ymd") . '_' . $cart->id,
+            "embeddata" => "",
+            "item" => json_encode($cart->getProducts()),
+            "bankcode" => "",
+            "description" => sprintf("Thanh toán đơn hàng của %s %s - donghophattai.com", $customer->id_gender == 1 ? "anh" : "chị", $customer->firstname),
+            "email" => $customer->email,
+        ];
+
+        $hmacinput = $appid . "|" . $payload["apptransid"] . "|" . $payload["appuser"] . "|" . $payload["amount"] . "|" . $payload["apptime"] . "|" . $payload["embeddata"] . "|" . $payload["item"];
+        $mac = hash_hmac("sha256", $hmacinput, $key1);
+        $payload["mac"] = $mac;
+
+        $result = $this->callAPI("POST", $createOrderUrl, $payload);
+
+        printf("<pre>");
+        print_r($result);
+        printf("</pre>");
+    }
+
+    public function callAPI($method, $url, $data = false)
+    {
+        $curl = curl_init();
+
+        switch ($method) {
+            case "POST":
+                curl_setopt($curl, CURLOPT_POST, 1);
+
+                if ($data)
+                    curl_setopt($curl, CURLOPT_POSTFIELDS, $data);
+                break;
+            case "PUT":
+                curl_setopt($curl, CURLOPT_PUT, 1);
+                break;
+            default:
+                if ($data)
+                    $url = sprintf("%s?%s", $url, http_build_query($data));
+        }
+
+        // Optional Authentication:
+        curl_setopt($curl, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
+        curl_setopt($curl, CURLOPT_USERPWD, "username:password");
+
+        curl_setopt($curl, CURLOPT_URL, $url);
+        curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+
+        $result = curl_exec($curl);
+
+        curl_close($curl);
+
+        return $result;
     }
 }

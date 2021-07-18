@@ -24,5 +24,5 @@
 *}
 
 <section>
-  <p>{l s='Add some details about the payment option' mod='mypaymentmodule'}</p>
+  <p>{l s='Thanh toán trực tuyến qua Cổng ZaloPay' mod='mypaymentmodule'}</p>
 </section>
