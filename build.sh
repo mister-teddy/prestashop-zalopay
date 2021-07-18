@@ -1,0 +1,1 @@
+zip zalopay.zip zalopay -r -x '*.git*'
