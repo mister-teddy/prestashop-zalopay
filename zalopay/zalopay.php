@@ -121,4 +121,90 @@ class ZaloPay extends PaymentModule
 
         return $externalOption;
     }
+
+    public function getContent()
+    {
+        $output = null;
+        if (Tools::isSubmit('submit' . $this->name)) {
+            $appid = $_POST['appid'];
+            $key1 = $_POST['key1'];
+            $key2 = $_POST['key2'];
+
+            Configuration::updateValue('ZALOPAY_APPID', $appid);
+            Configuration::updateValue('ZALOPAY_KEY1', $key1);
+            Configuration::updateValue('ZALOPAY_KEY2', $key2);
+            $output .= $this->displayConfirmation($this->l('Settings updated'));
+        }
+        return $output . $this->displayForm();
+    }
+
+    public function displayForm()
+    {
+        // Get default language
+        $defaultLang = (int)Configuration::get('PS_LANG_DEFAULT');
+
+        // Init Fields form array
+        $fieldsForm[0]['form'] = [
+            'legend' => [
+                'title' => $this->l('ZaloPlay Settings'),
+            ],
+            'input' => [
+                [
+                    'type' => 'text',
+                    'label' => $this->l('AppID'),
+                    'name' => 'appid'
+                ],
+                [
+                    'type' => 'text',
+                    'label' => $this->l('Key 1'),
+                    'name' => 'key1'
+                ],
+                [
+                    'type' => 'text',
+                    'label' => $this->l('Key 2'),
+                    'name' => 'key2'
+                ]
+            ],
+            'submit' => [
+                'title' => $this->l('Save'),
+                'class' => 'btn btn-default pull-right'
+            ]
+        ];
+
+        $helper = new HelperForm();
+
+        // Module, token and currentIndex
+        $helper->module = $this;
+        $helper->name_controller = $this->name;
+        $helper->token = Tools::getAdminTokenLite('AdminModules');
+        $helper->currentIndex = AdminController::$currentIndex . '&configure=' . $this->name;
+
+        // Language
+        $helper->default_form_language = $defaultLang;
+        $helper->allow_employee_form_lang = $defaultLang;
+
+        // Title and toolbar
+        $helper->title = $this->displayName;
+        $helper->show_toolbar = true;        // false -> remove toolbar
+        $helper->toolbar_scroll = true;      // yes - > Toolbar is always visible on the top of the screen.
+        $helper->submit_action = 'submit' . $this->name;
+        $helper->toolbar_btn = [
+            'save' => [
+                'desc' => $this->l('Save'),
+                'href' => AdminController::$currentIndex . '&configure=' . $this->name . '&save' . $this->name .
+                    '&token=' . Tools::getAdminTokenLite('AdminModules'),
+            ],
+            'back' => [
+                'href' => AdminController::$currentIndex . '&token=' . Tools::getAdminTokenLite('AdminModules'),
+                'desc' => $this->l('Back to list')
+            ]
+        ];
+
+        // Load current value
+        $helper->fields_value['appid'] = Configuration::get('ZALOPAY_APPID');
+        $helper->fields_value['key1'] = Configuration::get('ZALOPAY_KEY1');
+        $helper->fields_value['key2'] = Configuration::get('ZALOPAY_KEY2');
+
+        return $helper->generateForm($fieldsForm);
+    }
 }
