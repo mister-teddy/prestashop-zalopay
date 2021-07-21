@@ -47,7 +47,7 @@ class ZaloPay extends PaymentModule
         $this->version = '1.0.0';
         $this->ps_versions_compliancy = array('min' => '1.7', 'max' => _PS_VERSION_);
         $this->author = 'Nguyễn Hồng Phát';
-        $this->controllers = array('validation');
+        $this->controllers = array('validation', 'callback', 'redirect');
         $this->is_eu_compatible = 1;
 
         $this->currencies = true;

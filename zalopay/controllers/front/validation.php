@@ -52,31 +52,18 @@ class ZaloPayValidationModuleFrontController extends ModuleFrontController
             die($this->module->l('This payment method is not available.', 'validation'));
         }
 
-        $this->context->smarty->assign([
-            'params' => $_REQUEST,
-            'cart' => $cart,
-        ]);
+        $order = $this->createOrder();
+        print_r($order);
 
-        $this->createOrder();
-
-        //$this->setTemplate('payment_return.tpl');
-        $this->setTemplate('module:zalopay/views/templates/front/payment_return.tpl');
-
-
-        // $customer = new Customer($cart->id_customer);
-        // if (!Validate::isLoadedObject($customer))
-        //     Tools::redirect('index.php?controller=order&step=1');
-
-        // $currency = $this->context->currency;
-        // $total = (float)$cart->getOrderTotal(true, Cart::BOTH);
-        // $mailVars = array(
-        //     '{bankwire_owner}' => Configuration::get('BANK_WIRE_OWNER'),
-        //     '{bankwire_details}' => nl2br(Configuration::get('BANK_WIRE_DETAILS')),
-        //     '{bankwire_address}' => nl2br(Configuration::get('BANK_WIRE_ADDRESS'))
-        // );
-
-        // $this->module->validateOrder($cart->id, Configuration::get('PS_OS_BANKWIRE'), $total, $this->module->displayName, NULL, $mailVars, (int)$currency->id, false, $customer->secure_key);
-        // Tools::redirect('index.php?controller=order-confirmation&id_cart='.$cart->id.'&id_module='.$this->module->id.'&id_order='.$this->module->currentOrder.'&key='.$customer->secure_key);
+        if ($order['return_code'] == 1) {
+            $url = $order['order_url'];
+            Tools::redirect($url);
+        } else {
+            $this->context->smarty->assign([
+                'result' => $order,
+            ]);
+            Tools::redirect('index.php?controller=order&step=1');
+        }
     }
 
     public function createOrder()
@@ -84,32 +71,55 @@ class ZaloPayValidationModuleFrontController extends ModuleFrontController
         $cart = $this->context->cart;
         $customer = $this->context->customer;
 
-        $appid = "553";
-        $key1 = "9phuAOYhan4urywHTh0ndEXiV3pKHr5Q";
-        $createOrderUrl = "https://sandbox.zalopay.com.vn/v001/tpe/createorder";
+        $appid = Configuration::get('ZALOPAY_APPID');
+        $key1 = Configuration::get('ZALOPAY_KEY1');
+
+        $createOrderUrl = "https://sb-openapi.zalopay.vn/v2/create";
+        $item = array_map(function ($product) {
+            return [
+                'id' => $product['id_product'],
+                'name' => $product['name'],
+                'quantity' => $product['cart_quantity'],
+                'price' => $product['price']
+            ];
+        }, $cart->getProducts());
+        $title = implode(", ", array_column($item, 'name'));
+        $callback = $this->context->link->getModuleLink($this->module->name, 'callback', array(), true);
+        $redirect = $this->context->link->getModuleLink($this->module->name, 'redirect', array(), true);
+        $currency = $this->context->currency;
+        $total = (float)$cart->getOrderTotal(true, Cart::BOTH);
 
         $payload = [
-            "appid" => $appid,
-            "appuser" => $customer->email,
-            "apptime" => time(),
-            "amount" => $cart->getOrderTotal(),
-            "apptransid" => date("ymd") . '_' . $cart->id,
-            "embeddata" => "",
-            "item" => json_encode($cart->getProducts()),
-            "bankcode" => "",
-            "description" => sprintf("Thanh toán đơn hàng của %s %s - donghophattai.com", $customer->id_gender == 1 ? "anh" : "chị", $customer->firstname),
+            "app_id" => $appid,
+            "app_user" => $customer->email,
+            "app_time" => round(microtime(true) * 1000),
+            "amount" => $total,
+            "app_trans_id" => date("ymd") . time() . '_' . $cart->id,
+            "callback_url" => $callback,
+            "order_type" => "GOODS",
+            "embed_data" => json_encode([
+                'redirecturl' => $redirect,
+                'cart_id' => $cart->id,
+                'total' => $total,
+                'currency_id' => $currency->id,
+                'secure_key' => $customer->secure_key
+            ]),
+            "item" => json_encode($item),
+            "bank_code" => "",
+            "title" => $title,
+            "description" => sprintf("Đồng Hồ Phát Tài - Thanh toán đơn hàng của %s %s", $customer->id_gender == 1 ? "anh" : "chị", $customer->firstname),
             "email" => $customer->email,
         ];
+        Logger::addLog('[ZaloPay] Send payload: ' . json_encode($payload));
 
-        $hmacinput = $appid . "|" . $payload["apptransid"] . "|" . $payload["appuser"] . "|" . $payload["amount"] . "|" . $payload["apptime"] . "|" . $payload["embeddata"] . "|" . $payload["item"];
+        $hmacinput = $appid . "|" . $payload["app_trans_id"] . "|" . $payload["app_user"] . "|" . $payload["amount"] . "|" . $payload["app_time"] . "|" . $payload["embed_data"] . "|" . $payload["item"];
         $mac = hash_hmac("sha256", $hmacinput, $key1);
         $payload["mac"] = $mac;
 
         $result = $this->callAPI("POST", $createOrderUrl, $payload);
+        Logger::addLog('[ZaloPay] Received result: ' . json_encode($result));
 
-        printf("<pre>");
-        print_r($result);
-        printf("</pre>");
+        return $result;
     }
 
     public function callAPI($method, $url, $data = false)
@@ -132,9 +142,6 @@ class ZaloPayValidationModuleFrontController extends ModuleFrontController
         }
 
         // Optional Authentication:
-        curl_setopt($curl, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
-        curl_setopt($curl, CURLOPT_USERPWD, "username:password");
-
         curl_setopt($curl, CURLOPT_URL, $url);
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
 
@@ -142,6 +149,9 @@ class ZaloPayValidationModuleFrontController extends ModuleFrontController
 
         curl_close($curl);
 
-        return $result;
+        if (!$result) {
+            die('Error: "' . curl_error($curl) . '" - Code: ' . curl_errno($curl));
+        }
+        return json_decode($result, true);
     }
 }
