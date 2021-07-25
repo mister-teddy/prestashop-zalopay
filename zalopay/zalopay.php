@@ -56,16 +56,17 @@ class ZaloPay extends PaymentModule
         $this->bootstrap = true;
         parent::__construct();
 
-        $this->displayName = $this->l('ZaloPay Gateway');
+        $this->displayName = $this->l('Cổng ZaloPay');
         $this->description = $this->l('Thanh toán trực tuyến qua Cổng ZaloPay');
 
         if (!count(Currency::checkPaymentCurrencies($this->id))) {
-            $this->warning = $this->l('No currency has been set for this module.');
+            $this->warning = $this->l('Không có đơn vị tiền tệ nào được thiết lập');
         }
     }
 
     public function install()
     {
+        Configuration::updateValue('ZALOPAY_SANDBOX', true);
         if (!parent::install() || !$this->registerHook('paymentOptions') || !$this->registerHook('paymentReturn')) {
             return false;
         }
@@ -107,17 +108,9 @@ class ZaloPay extends PaymentModule
     public function getExternalPaymentOption()
     {
         $externalOption = new PaymentOption();
-        $externalOption->setCallToActionText($this->l('Thanh toán trực tuyến'))
+        $externalOption->setCallToActionText($this->l('Thanh toán trực tuyến qua cổng thanh toán'))
             ->setAction($this->context->link->getModuleLink($this->name, 'validation', array(), true))
-            ->setInputs([
-                'token' => [
-                    'name' => 'token',
-                    'type' => 'hidden',
-                    'value' => '12345689',
-                ],
-            ])
-            ->setAdditionalInformation($this->context->smarty->fetch('module:zalopay/views/templates/front/payment_infos.tpl'))
-            ->setLogo(Media::getMediaPath(_PS_MODULE_DIR_ . $this->name . '/logo.png'));
+            ->setAdditionalInformation($this->context->smarty->fetch('module:zalopay/views/templates/front/payment_infos.tpl'));
 
         return $externalOption;
     }
@@ -126,14 +119,16 @@ class ZaloPay extends PaymentModule
     {
         $output = null;
         if (Tools::isSubmit('submit' . $this->name)) {
+            $sandbox = $_POST['sandbox'];
             $appid = $_POST['appid'];
             $key1 = $_POST['key1'];
             $key2 = $_POST['key2'];
 
+            Configuration::updateValue('ZALOPAY_SANDBOX', $sandbox);
             Configuration::updateValue('ZALOPAY_APPID', $appid);
             Configuration::updateValue('ZALOPAY_KEY1', $key1);
             Configuration::updateValue('ZALOPAY_KEY2', $key2);
-            $output .= $this->displayConfirmation($this->l('Settings updated'));
+            $output .= $this->displayConfirmation($this->l('Lưu thay đổi thành công!'));
         }
         return $output . $this->displayForm();
     }
@@ -146,9 +141,28 @@ class ZaloPay extends PaymentModule
         // Init Fields form array
         $fieldsForm[0]['form'] = [
             'legend' => [
-                'title' => $this->l('ZaloPlay Settings'),
+                'title' => $this->l('Thiết lập ZaloPay'),
             ],
             'input' => [
+                [
+                    'type' => 'switch',
+                    'label' => $this->l('Chế độ Sandbox'),
+                    'name' => 'sandbox',
+                    'is_bool' => true,
+                    'desc' => $this->l('Bật chế độ Sandbox để test bằng ứng dụng ZaloPay sandbox hoặc thẻ ATM giả để không bị trừ tiền'),
+                    'values' => array(
+                        array(
+                            'id' => 'active_on',
+                            'value' => true,
+                            'label' => $this->l('Enabled')
+                        ),
+                        array(
+                            'id' => 'active_off',
+                            'value' => false,
+                            'label' => $this->l('Disabled')
+                        )
+                    ),
+                ],
                 [
                     'type' => 'text',
                     'label' => $this->l('AppID'),
@@ -166,7 +180,7 @@ class ZaloPay extends PaymentModule
                 ]
             ],
             'submit' => [
-                'title' => $this->l('Save'),
+                'title' => $this->l('Lưu'),
                 'class' => 'btn btn-default pull-right'
             ]
         ];
@@ -196,11 +210,12 @@ class ZaloPay extends PaymentModule
             ],
             'back' => [
                 'href' => AdminController::$currentIndex . '&token=' . Tools::getAdminTokenLite('AdminModules'),
-                'desc' => $this->l('Back to list')
+                'desc' => $this->l('Quay về')
             ]
         ];
 
         // Load current value
+        $helper->fields_value['sandbox'] = Configuration::get('ZALOPAY_SANDBOX');
         $helper->fields_value['appid'] = Configuration::get('ZALOPAY_APPID');
         $helper->fields_value['key1'] = Configuration::get('ZALOPAY_KEY1');
         $helper->fields_value['key2'] = Configuration::get('ZALOPAY_KEY2');

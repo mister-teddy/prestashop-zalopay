@@ -34,8 +34,6 @@ class ZaloPayRedirectModuleFrontController extends ModuleFrontController
    */
   public function postProcess()
   {
-    Logger::addLog('[ZaloPay][Redirect] Trigger redirect: ' . json_encode($_REQUEST));
-
     $cart = $this->context->cart;
     if ($cart->id_customer == 0 || $cart->id_address_delivery == 0 || $cart->id_address_invoice == 0 || !$this->module->active) {
       $this->redirectToOrder();
@@ -72,8 +70,8 @@ class ZaloPayRedirectModuleFrontController extends ModuleFrontController
       $customer = new Customer($cart->id_customer);
       if (!Validate::isLoadedObject($customer)) $this->redirectToOrder();
       $cart_id = explode("_", $_REQUEST["apptransid"])[1];
-      $url = $this->context->link->getPageLink('order-confirmation', true, $customer->id_lang, 'key='.$customer->secure_key.'&id_cart='.$cart_id.'&id_module='.(int)$this->module->id);
-      Logger::addLog('[ZaloPay][Redirect] Redirect to order confirmination: ' . $url);
+      $url = $this->context->link->getPageLink('order-confirmation', true, $customer->id_lang, 'key=' . $customer->secure_key . '&id_cart=' . $cart_id . '&id_module=' . (int)$this->module->id);
+      Logger::addLog(sprintf("[ZaloPay][Redirect] Thanh toán %s thành công! Quay về trang xác nhận đơn hàng: %s", $_REQUEST['amount'], $url));
       Tools::redirectLink($url);
     } else {
       $this->redirectToOrder();
@@ -82,6 +80,7 @@ class ZaloPayRedirectModuleFrontController extends ModuleFrontController
 
   public function redirectToOrder()
   {
+    Logger::addLog(sprintf("[ZaloPay][Redirect] Thanh toán %s thất bại! Mã lỗi: %s. Quay về trang đặt hàng, bước thanh toán.", $_REQUEST['amount'], $_REQUEST['status']));
     Tools::redirect($this->context->link->getPageLink('order', true));
   }
 }

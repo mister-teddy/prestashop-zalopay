@@ -35,11 +35,8 @@ class ZaloPayCallbackModuleFrontController extends ModuleFrontController
   public function postProcess()
   {
     $data = json_decode(file_get_contents('php://input'), true);
-    Logger::addLog('[ZaloPay][Callback] Trigger callback: ' . json_encode($data));
 
     $key2 = Configuration::get('ZALOPAY_KEY2');
-
-    Logger::addLog('[ZaloPay][Callback] Begin processing callback ');
 
     $response = [];
     try {
@@ -47,19 +44,13 @@ class ZaloPayCallbackModuleFrontController extends ModuleFrontController
       $mac = hash_hmac("sha256", $hmacinput, $key2);
 
       $valid = $mac == $data['mac'];
-      Logger::addLog('[ZaloPay][Callback] Mac is ' . ($valid ? 'VALID' : 'INVALID'));
 
       if ($valid) {
         // Payment success
-        $mailVars = array(
-          '{bankwire_owner}' => Configuration::get('BANK_WIRE_OWNER'),
-          '{bankwire_details}' => nl2br(Configuration::get('BANK_WIRE_DETAILS')),
-          '{bankwire_address}' => nl2br(Configuration::get('BANK_WIRE_ADDRESS'))
-        );
+        $mailVars = array();
 
         $embed_data = json_decode(json_decode($data['data'], true)['embed_data'], true);
 
-        Logger::addLog('[ZaloPay][Callback] Validating order: ' . json_encode($embed_data));
         $this->module->validateOrder(
           $embed_data['cart_id'],
           Configuration::get('PS_OS_PAYMENT'),
@@ -72,16 +63,16 @@ class ZaloPayCallbackModuleFrontController extends ModuleFrontController
           $embed_data['secure_key']
         );
         $response["return_code"] = 1;
-        $response["return_message"] = "success";
+        $response["return_message"] = "MAC hợp lệ, đơn hàng đã được tạo thành công!";
       } else {
         $response["return_code"] = -1;
-        $response["return_message"] = "mac not equal";
+        $response["return_message"] = "MAC không hợp lệ!.";
       }
     } catch (\Throwable $th) {
       $response["return_code"] = 0; // ZaloPay server sẽ callback lại (tối đa 3 lần)
-      $response["return_message"] = $th->getMessage();
+      $response["return_message"] = sprintf("Lỗi không xác định - %s", $th->getMessage());
     } finally {
-      Logger::addLog('[ZaloPay][Callback] Callback processed: ' . json_encode($response));
+      Logger::addLog(sprintf("[ZaloPay][Callback] Xử lý callback %s! Chi tiết: %s.", $response['return_code'] == 1 ? 'thành công' : 'thất bại', $response['return_message']));
       header('Content-Type: application/json');
       die(Tools::jsonEncode($response));
     }

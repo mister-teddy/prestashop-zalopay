@@ -71,10 +71,12 @@ class ZaloPayValidationModuleFrontController extends ModuleFrontController
         $cart = $this->context->cart;
         $customer = $this->context->customer;
 
+        $sandbox = Configuration::get('ZALOPAY_SANDBOX');
         $appid = Configuration::get('ZALOPAY_APPID');
         $key1 = Configuration::get('ZALOPAY_KEY1');
 
-        $createOrderUrl = "https://sb-openapi.zalopay.vn/v2/create";
+        $createOrderUrl = $sandbox ? "https://sb-openapi.zalopay.vn/v2/create" : "https://openapi.zalopay.vn/v2/create";
+
         $item = array_map(function ($product) {
             return [
                 'id' => $product['id_product'],
@@ -110,14 +112,13 @@ class ZaloPayValidationModuleFrontController extends ModuleFrontController
             "description" => sprintf("Đồng Hồ Phát Tài - Thanh toán đơn hàng của %s %s", $customer->id_gender == 1 ? "anh" : "chị", $customer->firstname),
             "email" => $customer->email,
         ];
-        Logger::addLog('[ZaloPay] Send payload: ' . json_encode($payload));
 
         $hmacinput = $appid . "|" . $payload["app_trans_id"] . "|" . $payload["app_user"] . "|" . $payload["amount"] . "|" . $payload["app_time"] . "|" . $payload["embed_data"] . "|" . $payload["item"];
         $mac = hash_hmac("sha256", $hmacinput, $key1);
         $payload["mac"] = $mac;
 
         $result = $this->callAPI("POST", $createOrderUrl, $payload);
-        Logger::addLog('[ZaloPay] Received result: ' . json_encode($result));
+        Logger::addLog(sprintf("[ZaloPay][Validation] %s. Mã trả về: %s. Chi tiết %s (%s)", $result['return_message'], $result['return_code'], $result['sub_return_message'], $result['sub_return_code']));
 
         return $result;
     }

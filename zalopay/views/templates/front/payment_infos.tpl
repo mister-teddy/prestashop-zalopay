@@ -24,5 +24,6 @@
 *}
 
 <section>
-  <p>{l s='Thanh toán trực tuyến qua Cổng ZaloPay' mod='mypaymentmodule'}</p>
+  <p>{l s='Các hình thức thanh toán được hỗ trợ: Thẻ ATM nội địa/Internet Banking, VISA, MasterCard, JCB và Ví điện tử ZaloPay. Nhấn nút Đặt Hàng để bắt đầu thanh toán!' mod='zalopay'}</p>
+  <p>Một thẻ cào điện thoại mệnh giá ngẫu nhiên 20k - 100k sẽ được vận chuyển chung với đơn hàng của bạn. Vui lòng để lại số điện thoại để bên mình biết nhà mạng mà bạn đang sử dụng. <b>Không áp dụng chung với gói quà!</b></p>
 </section>
