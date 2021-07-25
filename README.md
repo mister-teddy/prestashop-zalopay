@@ -1,16 +1,21 @@
-# prestashop-zalopay
+# Prestashop ZaloPay
 
-# Example payment module
+Thanh toán trực tuyến qua Cổng ZaloPay
 
-## About
 
-This repository provides an example to kick start your own payment module development. For more information, head on to the [Official Developer Documentation][documentation].
+## Install
+
+1. Vào mục release, tải file zalopay.zip về
+2. Đăng nhập vào Admin cửa hàng Prestashop của bạn, cài đặt module bằng file zip vừa tải
+3. Ở trang cấu hình module, nhập App ID và Key 1, Key 2 vào. Đăng ký ZaloPay Merchant để có được các key trên
+
+Cấu hình | Đặt hàng | Chọn phương thức thanh toán | Tiến hành thanh toán | Thanh toán thành công | Đơn hàng được tạo
+:-:|:-:|:-:|:-:|:-:|:-:
+![](./screenshots/configuration.png) | ![](screenshots/checkout.png) | ![](screenshots/atm.png) | ![](screenshots/visa.png) | ![](screenshots/success.png) | ![](screenshots/confirmed.png)
 
 ## Contributing
 
-PrestaShop modules are open source extensions to the [PrestaShop e-commerce platform][prestashop]. Everyone is welcome and even encouraged to contribute with their own improvements!
-
-Just make sure to follow our [contribution guidelines][contribution-guidelines].
+Nguyễn Hồng Phát
 
 ## License
 
